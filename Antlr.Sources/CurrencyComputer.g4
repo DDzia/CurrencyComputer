@@ -4,12 +4,23 @@ input
     : expression ',' conversion ;
 
 expression
-    : amount operator expression 
-    | amount operator amount 
+    : amountComposite operator expression 
+    | amountComposite operator amountComposite 
     ;
 
 operator 
     : ('-'| '+') ;
+
+amountComposite
+    : (amount | amountConvertible)
+    ;
+
+amountConvertible
+    : amountConvertibleBase ':' conversion
+    ;
+
+amountConvertibleBase 
+    : number currency  ;
 
 amount 
     : number currency  ;
@@ -18,15 +29,7 @@ currency
     : ('eur'| 'r' | '$') 
     ;
 
-/*
-number 
-    : (INTEGER | DECIMAL) 
-    ;
-*/
-number : DECIMAL
-    ;
-
-DECIMAL
+number
     : (DECIMAL_WITHOUT_SIGN | DECIMAL_WITH_NEGATIVE_SIGN) 
     ;
 
@@ -41,19 +44,6 @@ DECIMAL_WITHOUT_SIGN
 DIGIT 
     : (DIGIT_19 | '0') 
     ;
-/*
-INTEGER 
-    : (INTEGER_WITHOUT_SIGN | INTEGER_WITH_NEGATIVE_SIGN | '0') 
-    ;
-
-INTEGER_WITH_NEGATIVE_SIGN
-    : '-' INTEGER_WITHOUT_SIGN
-    ;
-
-INTEGER_WITHOUT_SIGN 
-    : DIGIT_19+ 
-    ;
-*/
 
 DIGIT_19 
     : [1-9] 

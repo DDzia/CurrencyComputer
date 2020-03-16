@@ -50,6 +50,24 @@ public interface ICurrencyComputerVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitOperator([NotNull] CurrencyComputerParser.OperatorContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amountComposite"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitAmountComposite([NotNull] CurrencyComputerParser.AmountCompositeContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amountConvertible"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitAmountConvertible([NotNull] CurrencyComputerParser.AmountConvertibleContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amountConvertibleBase"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitAmountConvertibleBase([NotNull] CurrencyComputerParser.AmountConvertibleBaseContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amount"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
