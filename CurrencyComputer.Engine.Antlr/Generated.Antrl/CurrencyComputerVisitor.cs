@@ -44,29 +44,35 @@ public interface ICurrencyComputerVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitExpression([NotNull] CurrencyComputerParser.ExpressionContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.operator"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	/// <return>The visitor result.</return>
-	Result VisitOperator([NotNull] CurrencyComputerParser.OperatorContext context);
-	/// <summary>
 	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amountComposite"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitAmountComposite([NotNull] CurrencyComputerParser.AmountCompositeContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amountConvertible"/>.
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amountSignedConvertible"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	Result VisitAmountConvertible([NotNull] CurrencyComputerParser.AmountConvertibleContext context);
+	Result VisitAmountSignedConvertible([NotNull] CurrencyComputerParser.AmountSignedConvertibleContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amountConvertibleBase"/>.
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amountSigned"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	Result VisitAmountConvertibleBase([NotNull] CurrencyComputerParser.AmountConvertibleBaseContext context);
+	Result VisitAmountSigned([NotNull] CurrencyComputerParser.AmountSignedContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.operatorAndSpaces"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitOperatorAndSpaces([NotNull] CurrencyComputerParser.OperatorAndSpacesContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.operator"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitOperator([NotNull] CurrencyComputerParser.OperatorContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.amount"/>.
 	/// </summary>
