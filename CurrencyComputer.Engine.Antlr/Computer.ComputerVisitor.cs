@@ -53,6 +53,18 @@ namespace CurrencyComputer.Engine.Antlr
                 return conversion;
             }
 
+            public override object VisitAmountConvertibleBase(CurrencyComputerParser.AmountConvertibleBaseContext context)
+            {
+                var value = (decimal)VisitNumber(context.number());
+                var currency = (string)VisitCurrency(context.currency());
+
+                return new AmountConvertibleBase
+                {
+                    Currency = currency,
+                    Value = value
+                };
+            }
+
             public override object VisitCurrency(CurrencyComputerParser.CurrencyContext context)
             {
                 var currency = context.GetText();
@@ -89,62 +101,49 @@ namespace CurrencyComputer.Engine.Antlr
                 return result;
             }
 
-            //public override object VisitOperation(CurrencyComputerParser.OperationContext context)
-            //{
-            //    var left = (decimal)VisitAmount(context.amount());
-
-            //    decimal result = left;
-            //    //foreach (var ctx in context.operatorRight())
-            //    //{
-            //    //    var pair = (Tuple<string, decimal>)VisitOperatorRight(ctx);
-            //    //    result = Operations[pair.Item1](result, pair.Item2);
-            //    //}
-                
-
-            //    //var operandLeft = (decimal)VisitAmount(context.amount(0));
-            //    //var @operator = (string)VisitOperator(context.@operator());
-            //    //var operandRight = (decimal)VisitAmount(context.amount(1));
-
-            //    return result;
-            //}
-
-            //public override object VisitOperationComposite(CurrencyComputerParser.OperationCompositeContext context)
-            //{
-            //    //decimal left;
-            //    //{
-            //    //    try
-            //    //    {
-            //    //        var compositeContext = context.
-            //    //        left = (decimal)VisitOperationComposite(compositeContext);
-            //    //    }
-            //    //    catch
-            //    //    {
-            //    //        var operationContext = context.operation();
-            //    //        left = (decimal)VisitOperation(operationContext);
-            //    //    }
-            //    //}
-
-            //    var left = (decimal)VisitOperation(context.operation());
-            //    var @operator = (string)VisitOperator(context.@operator());
-            //    var right = (decimal)VisitAmount(context.amount());
-
-            //    return Operations[@operator](left, right);
-            //}
-
             public override object VisitOperator(CurrencyComputerParser.OperatorContext context)
             {
                 var value = context.GetText();
                 return value;
             }
 
+            public override object VisitAmountConvertible(CurrencyComputerParser.AmountConvertibleContext context)
+            {
+                var amountConvertibleBase = (AmountConvertibleBase) VisitAmountConvertibleBase(context.amountConvertibleBase());
+
+                var conversionStr = (string) VisitConversion(context.conversion());
+                var convertTo = _conversionToCurrencyConventions[conversionStr];
+
+                // Контроль типов: нельзя конвертировать валюту в саму себя
+                if (amountConvertibleBase.Currency == convertTo)
+                {
+                    return amountConvertibleBase.Value;
+                }
+
+                var cost = _conversionsCost[amountConvertibleBase.Currency][convertTo];
+
+                var result = amountConvertibleBase.Value * cost;
+                return result;
+            }
+
+            public override object VisitAmountComposite(CurrencyComputerParser.AmountCompositeContext context)
+            {
+                var amountContext = context.amount();
+                var result = (decimal)(amountContext is null
+                    ? VisitAmountConvertible(context.amountConvertible())
+                    : VisitAmount(amountContext));
+                
+                return result;
+            }
+
             public override object VisitExpression(CurrencyComputerParser.ExpressionContext context)
             {
-                var amounts = context.amount();
-                var left = (decimal)VisitAmount(amounts[0]);
+                var amounts = context.amountComposite();
+                var left = (decimal)VisitAmountComposite(amounts[0]);
                 var @operator = (string)VisitOperator(context.@operator());
 
                 var right = amounts.Length == 2
-                    ? (decimal) VisitAmount(amounts[1])
+                    ? (decimal)VisitAmountComposite(amounts[1])
                     : (decimal) VisitExpression(context.expression());
 
                 return Operations[@operator](left, right);
@@ -156,6 +155,12 @@ namespace CurrencyComputer.Engine.Antlr
                 _targetCurrency = _conversionToCurrencyConventions[conversion];
 
                 return VisitExpression(context.expression());
+            }
+
+            private sealed class AmountConvertibleBase
+            {
+                public string Currency { get; set; }
+                public decimal Value { get; set; }
             }
         }
     }
