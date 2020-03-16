@@ -39,7 +39,7 @@ namespace CurrencyComputer.Engine.Antlr
 
             public override object VisitConversion(CurrencyComputerParser.ConversionContext context)
             {
-                var conversion = context?.GetText();
+                var conversion = context.GetText();
                 return conversion;
             }
 
@@ -51,12 +51,6 @@ namespace CurrencyComputer.Engine.Antlr
                 var convertTo = _conversionToCurrencyConventions[conversionStr];
 
                 return ConvertTo(amountSigned, convertTo);
-            }
-
-            public override object VisitCurrency(CurrencyComputerParser.CurrencyContext context)
-            {
-                var currency = context.GetText();
-                return currency;
             }
 
             public override object VisitNumber(CurrencyComputerParser.NumberContext context)
@@ -93,8 +87,8 @@ namespace CurrencyComputer.Engine.Antlr
 
             public override object VisitAmount(CurrencyComputerParser.AmountContext context)
             {
+                var currency = context.currencyRight()?.GetText() ?? context.currencyLeft()?.GetText();
                 var value = (decimal)VisitNumber(context.number());
-                var currency = (string)VisitCurrency(context.currency());
 
                 return new Amount
                 {

@@ -80,11 +80,17 @@ public interface ICurrencyComputerVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitAmount([NotNull] CurrencyComputerParser.AmountContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.currency"/>.
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.currencyRight"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	Result VisitCurrency([NotNull] CurrencyComputerParser.CurrencyContext context);
+	Result VisitCurrencyRight([NotNull] CurrencyComputerParser.CurrencyRightContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.currencyLeft"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitCurrencyLeft([NotNull] CurrencyComputerParser.CurrencyLeftContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.number"/>.
 	/// </summary>

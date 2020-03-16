@@ -30,11 +30,16 @@ operator
     ;
 
 amount 
-    : number currency 
+    : number currencyRight 
+    | currencyLeft number 
     ;
 
-currency 
-    : ('eur'| 'r' | '$') 
+currencyRight
+    : ('eur'| 'r') 
+    ;
+
+currencyLeft
+    : '$' 
     ;
 
 number 

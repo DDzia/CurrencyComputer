@@ -114,7 +114,7 @@ public partial class CurrencyComputerBaseVisitor<Result> : AbstractParseTreeVisi
 	/// <return>The visitor result.</return>
 	public virtual Result VisitAmount([NotNull] CurrencyComputerParser.AmountContext context) { return VisitChildren(context); }
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.currency"/>.
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.currencyRight"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
 	/// on <paramref name="context"/>.
@@ -122,7 +122,17 @@ public partial class CurrencyComputerBaseVisitor<Result> : AbstractParseTreeVisi
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	public virtual Result VisitCurrency([NotNull] CurrencyComputerParser.CurrencyContext context) { return VisitChildren(context); }
+	public virtual Result VisitCurrencyRight([NotNull] CurrencyComputerParser.CurrencyRightContext context) { return VisitChildren(context); }
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.currencyLeft"/>.
+	/// <para>
+	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
+	/// on <paramref name="context"/>.
+	/// </para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	public virtual Result VisitCurrencyLeft([NotNull] CurrencyComputerParser.CurrencyLeftContext context) { return VisitChildren(context); }
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="CurrencyComputerParser.number"/>.
 	/// <para>
