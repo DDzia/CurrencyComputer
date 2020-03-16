@@ -8,16 +8,16 @@ using System.Collections.ObjectModel;
 
 namespace CurrencyComputer.Engine.Antlr
 {
-
-
     public sealed partial class Computer : IConversionComputer
     {
         private sealed class ComputerVisitor : CurrencyComputerBaseVisitor<object>
         {
             private static readonly IReadOnlyDictionary<string, Func<decimal, decimal, decimal>> Operations = new ReadOnlyDictionary<string, Func<decimal, decimal, decimal>>(new Dictionary<string, Func<decimal, decimal, decimal>>()
             {
-                { "+", (l, r) => l + r },
-                { "-", (l, r) => l - r }
+                { "++", (l, r) => l + r },
+                { "--", (l, r) => -(l + r) },
+                { "-+", (l, r) => (r - l) },
+                { "+-", (l, r) => (l - r) },
             });
 
             private readonly IDictionary<string, Dictionary<string, decimal>> _conversionsCost;
@@ -37,32 +37,20 @@ namespace CurrencyComputer.Engine.Antlr
                 _logger = logger;
             }
 
-            //public override object VisitOperatorRight(CurrencyComputerParser.OperatorRightContext context)
-            //{
-            //    //var @operator = (string)VisitOperator(context.@operator());
-            //    //var amount = (decimal)VisitAmount(context.amount());
-
-            //    //return new Tuple<string, decimal>(@operator, amount);
-
-            //    return null;
-            //}
-
             public override object VisitConversion(CurrencyComputerParser.ConversionContext context)
             {
                 var conversion = context?.GetText();
                 return conversion;
             }
 
-            public override object VisitAmountConvertibleBase(CurrencyComputerParser.AmountConvertibleBaseContext context)
+            public override object VisitAmountSignedConvertible(CurrencyComputerParser.AmountSignedConvertibleContext context)
             {
-                var value = (decimal)VisitNumber(context.number());
-                var currency = (string)VisitCurrency(context.currency());
+                var amountSigned = (AmountSigned)VisitAmountSigned(context.amountSigned());
 
-                return new AmountConvertibleBase
-                {
-                    Currency = currency,
-                    Value = value
-                };
+                var conversionStr = (string) VisitConversion(context.conversion());
+                var convertTo = _conversionToCurrencyConventions[conversionStr];
+
+                return ConvertTo(amountSigned, convertTo);
             }
 
             public override object VisitCurrency(CurrencyComputerParser.CurrencyContext context)
@@ -84,21 +72,35 @@ namespace CurrencyComputer.Engine.Antlr
                 }
             }
 
+            public override object VisitAmountSigned(CurrencyComputerParser.AmountSignedContext context)
+            {
+                var operatorCtx = context.operatorAndSpaces();
+                var sign = operatorCtx is null
+                    ? "+"
+                    : (string)VisitOperatorAndSpaces(context.operatorAndSpaces());
+
+                return new AmountSigned
+                {
+                    Sign = sign,
+                    Amount = (Amount) VisitAmount(context.amount())
+                };
+            }
+
+            public override object VisitOperatorAndSpaces(CurrencyComputerParser.OperatorAndSpacesContext context)
+            {
+                return VisitOperator(context.@operator());
+            }
+
             public override object VisitAmount(CurrencyComputerParser.AmountContext context)
             {
                 var value = (decimal)VisitNumber(context.number());
                 var currency = (string)VisitCurrency(context.currency());
 
-                // Контроль типов: нельзя конвертировать валюту в саму себя
-                if (currency == _targetCurrency)
+                return new Amount
                 {
-                    return value;
-                }
-
-                var cost = _conversionsCost[currency][_targetCurrency];
-
-                var result = value * cost;
-                return result;
+                    Currency = currency,
+                    Value = value
+                };
             }
 
             public override object VisitOperator(CurrencyComputerParser.OperatorContext context)
@@ -107,46 +109,42 @@ namespace CurrencyComputer.Engine.Antlr
                 return value;
             }
 
-            public override object VisitAmountConvertible(CurrencyComputerParser.AmountConvertibleContext context)
-            {
-                var amountConvertibleBase = (AmountConvertibleBase) VisitAmountConvertibleBase(context.amountConvertibleBase());
-
-                var conversionStr = (string) VisitConversion(context.conversion());
-                var convertTo = _conversionToCurrencyConventions[conversionStr];
-
-                // Контроль типов: нельзя конвертировать валюту в саму себя
-                if (amountConvertibleBase.Currency == convertTo)
-                {
-                    return amountConvertibleBase.Value;
-                }
-
-                var cost = _conversionsCost[amountConvertibleBase.Currency][convertTo];
-
-                var result = amountConvertibleBase.Value * cost;
-                return result;
-            }
-
             public override object VisitAmountComposite(CurrencyComputerParser.AmountCompositeContext context)
             {
-                var amountContext = context.amount();
-                var result = (decimal)(amountContext is null
-                    ? VisitAmountConvertible(context.amountConvertible())
-                    : VisitAmount(amountContext));
-                
+                var amountSignedContext = context.amountSigned();
+                var result = (AmountSigned)(amountSignedContext is null
+                    ? VisitAmountSignedConvertible(context.amountSignedConvertible())
+                    : VisitAmountSigned(amountSignedContext));
+
                 return result;
             }
 
             public override object VisitExpression(CurrencyComputerParser.ExpressionContext context)
             {
                 var amounts = context.amountComposite();
-                var left = (decimal)VisitAmountComposite(amounts[0]);
-                var @operator = (string)VisitOperator(context.@operator());
+                var left = (AmountSigned)VisitAmountComposite(amounts[0]);
+                var leftConverted = ConvertTo(left, _targetCurrency);
 
                 var right = amounts.Length == 2
-                    ? (decimal)VisitAmountComposite(amounts[1])
-                    : (decimal) VisitExpression(context.expression());
+                    ? (AmountSigned)VisitAmountComposite(amounts[1])
+                    : (AmountSigned) VisitExpression(context.expression());
+                var rightConverted = ConvertTo(right, _targetCurrency);
 
-                return Operations[@operator](left, right);
+
+                var operationKey = $"{leftConverted.Sign}{rightConverted.Sign}";
+                var resultComputed = Operations[operationKey](leftConverted.Amount.Value, rightConverted.Amount.Value);
+
+                return new AmountSigned
+                {
+                    Sign = resultComputed < 0
+                        ? "-"
+                        : "+",
+                    Amount = new Amount
+                    {
+                        Currency = _targetCurrency,
+                        Value = Math.Abs(resultComputed)
+                    }
+                };
             }
 
             public override object VisitInput(CurrencyComputerParser.InputContext context)
@@ -154,13 +152,44 @@ namespace CurrencyComputer.Engine.Antlr
                 var conversion = (string)VisitConversion(context.conversion());
                 _targetCurrency = _conversionToCurrencyConventions[conversion];
 
-                return VisitExpression(context.expression());
+                var resultAmount = (AmountSigned)VisitExpression(context.expression());
+                var resultAmountConverted = ConvertTo(resultAmount, _targetCurrency);
+
+                return resultAmountConverted.Sign == "-"
+                    ? -resultAmountConverted.Amount.Value
+                    : resultAmountConverted.Amount.Value;
             }
 
-            private sealed class AmountConvertibleBase
+            private AmountSigned ConvertTo(AmountSigned amountSigned, string convertTo)
+            {
+                // Контроль типов: нельзя конвертировать валюту в саму себя
+                if (amountSigned.Amount.Currency == convertTo)
+                {
+                    return amountSigned;
+                }
+
+                var cost = _conversionsCost[amountSigned.Amount.Currency][convertTo];
+                return new AmountSigned
+                {
+                    Sign = amountSigned.Sign,
+                    Amount = new Amount
+                    {
+                        Currency = convertTo,
+                        Value = amountSigned.Amount.Value * cost
+                    }
+                };
+            }
+
+            private sealed class Amount
             {
                 public string Currency { get; set; }
                 public decimal Value { get; set; }
+            }
+
+            private sealed class AmountSigned
+            {
+                public Amount Amount { get; set; }
+                public string Sign { get; set; }
             }
         }
     }
