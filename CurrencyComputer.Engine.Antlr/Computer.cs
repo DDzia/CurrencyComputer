@@ -1,11 +1,11 @@
 ﻿using Antlr4.Runtime;
-
+using Antlr4.Runtime.Atn;
 using CurrencyComputer.Core;
 
 using Microsoft.Extensions.Logging;
 
+using System;
 using System.Collections.Generic;
-using Antlr4.Runtime.Atn;
 
 namespace CurrencyComputer.Engine.Antlr
 {
@@ -26,10 +26,14 @@ namespace CurrencyComputer.Engine.Antlr
             _logger = logger;
         }
 
-        public decimal Compute(string input)
+        public ComputeResult Compute(string input)
         {
             var streamInput = new AntlrInputStream(input);
             var lexer = new CurrencyComputerLexer(streamInput);
+
+            lexer.RemoveErrorListeners();
+            lexer.AddErrorListener(new ErrorListener());
+
             var tokens = new CommonTokenStream(lexer);
 
             var parser = new CurrencyComputerParser(tokens)
@@ -38,12 +42,17 @@ namespace CurrencyComputer.Engine.Antlr
             };
             parser.Interpreter.PredictionMode = PredictionMode.LL_EXACT_AMBIG_DETECTION;
 
-            var resultComputed = (decimal)new ComputerVisitor(
+            var resultComputed = (Tuple<decimal, string>)new ComputerVisitor(
                     _conversionsCost,
                     _conversionToCurrencyConventions,
                     _logger)
                 .VisitInput(parser.input());
-            return resultComputed;
+
+            return new ComputeResult
+            {
+                Currency = resultComputed.Item2,
+                Value = resultComputed.Item1
+            };
         }
     }
 }

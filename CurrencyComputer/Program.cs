@@ -1,55 +1,48 @@
-﻿using CurrencyComputer.Core;
-using CurrencyComputer.Engine.Antlr;
+﻿
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-using Microsoft.Extensions.Logging;
-
-using Newtonsoft.Json;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.IO;
 
-using Serilog.Events;
-using ILogger = Microsoft.Extensions.Logging.ILogger;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace CurrencyComputer
 {
     class Program
     {
-        static void Main(string[] args)
+        static Task Main()
         {
-            // TODO: add logging!!!
-            ILogger logger = null;
-            Log.Logger = new LoggerConfiguration()
-	            .MinimumLevel.Information()
-	            .WriteTo.Console()
-                .WriteTo.File("logs\\ConversionResult.txt", rollingInterval: RollingInterval.Day)
-                
-	            .CreateLogger();
-
-            var computer = CreateComputer(logger);
-            while (true)
-            {
-                try
-                {
-                    var input = Console.ReadLine()?.Trim();
-                    var result = computer.Compute(input);
-                    // TODO: what with result???
-                    Log.Information("{Input} = {Result}", input, result);
-                }
-                catch (Exception e)
-                {
-	                Log.Error(e, "Incorrect input data");
-                }
-            }
+            return CreateHost().StartAsync();
         }
 
-        private static IConversionComputer CreateComputer(ILogger logger)
+        private static IHost CreateHost()
         {
-            var costs = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, decimal>>>(File.ReadAllText("conversion-costs.json"));
-            var conventions = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText("conversion-to-currency.convention.json"));
+            var loggingConfiguration = new ConfigurationBuilder()
+                .AddJsonFile("logging.settings.json")
+                .Build();
 
-            return new Computer(costs, conventions, logger);
+            return Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration((hostContext, configApp) =>
+                    configApp
+                        .AddConfiguration(loggingConfiguration)
+                        .AddJsonFile("app.settings.json"))
+                .ConfigureServices((hCtx, services) =>
+                    services
+                        .AddHostedService<InteractionService>()
+                        .AddLogging(loggingBuilder =>
+                        {
+                            var logger = new LoggerConfiguration()
+                                .ReadFrom.Configuration(loggingConfiguration)
+                                .CreateLogger();
+
+                            loggingBuilder
+                                .ClearProviders()
+                                .AddSerilog(logger, dispose: true);
+                        }))
+                .UseConsoleLifetime()
+                .Build();
         }
     }
 }

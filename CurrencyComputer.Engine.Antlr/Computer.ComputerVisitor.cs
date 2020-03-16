@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 
 namespace CurrencyComputer.Engine.Antlr
 {
@@ -26,6 +27,7 @@ namespace CurrencyComputer.Engine.Antlr
             private readonly ILogger _logger;
 
             private string _targetCurrency;
+            private int _operationsLogger;
 
             public ComputerVisitor(
                 IDictionary<string, Dictionary<string, decimal>> conversionsCost,
@@ -50,20 +52,19 @@ namespace CurrencyComputer.Engine.Antlr
                 var conversionStr = (string) VisitConversion(context.conversion());
                 var convertTo = _conversionToCurrencyConventions[conversionStr];
 
-                return ConvertTo(amountSigned, convertTo);
+                var converted = ConvertTo(amountSigned, convertTo);
+                if (converted != amountSigned)
+                {
+                    _logger?.LogDebug("{OperationNumber}:Converted from {Source} to {Dest}.", _operationsLogger++, amountSigned, converted);
+                }
+
+                return converted;
             }
 
             public override object VisitNumber(CurrencyComputerParser.NumberContext context)
             {
-                try
-                {
-                    var str = context.GetText();
-                    return decimal.Parse(str);
-                }
-                catch (Exception e)
-                {
-                    throw new Exception("TODO: some messages");
-                }
+                var str = context.GetText();
+                return decimal.Parse(str);
             }
 
             public override object VisitAmountSigned(CurrencyComputerParser.AmountSignedContext context)
@@ -118,17 +119,25 @@ namespace CurrencyComputer.Engine.Antlr
                 var amounts = context.amountComposite();
                 var left = (AmountSigned)VisitAmountComposite(amounts[0]);
                 var leftConverted = ConvertTo(left, _targetCurrency);
+                if (leftConverted != left)
+                {
+                    _logger?.LogDebug("{OperationNumber}:Converted from {Source} to {Dest}.", _operationsLogger++, left, leftConverted);
+                }
 
                 var right = amounts.Length == 2
                     ? (AmountSigned)VisitAmountComposite(amounts[1])
                     : (AmountSigned) VisitExpression(context.expression());
                 var rightConverted = ConvertTo(right, _targetCurrency);
+                if (rightConverted != right)
+                {
+                    _logger?.LogDebug("{OperationNumber}:Converted from {Source} to {Dest}.", _operationsLogger++, right, rightConverted);
+                }
 
 
                 var operationKey = $"{leftConverted.Sign}{rightConverted.Sign}";
                 var resultComputed = Operations[operationKey](leftConverted.Amount.Value, rightConverted.Amount.Value);
 
-                return new AmountSigned
+                var result = new AmountSigned
                 {
                     Sign = resultComputed < 0
                         ? "-"
@@ -139,19 +148,27 @@ namespace CurrencyComputer.Engine.Antlr
                         Value = Math.Abs(resultComputed)
                     }
                 };
+
+                _logger?.LogDebug("{OperationNumber}:Result {Result} from left {Left} and right {Right} tokens.", _operationsLogger++, result, leftConverted, rightConverted);
+
+                return result;
             }
 
             public override object VisitInput(CurrencyComputerParser.InputContext context)
             {
+                _targetCurrency = null;
+                _operationsLogger = 0;
+
                 var conversion = (string)VisitConversion(context.conversion());
                 _targetCurrency = _conversionToCurrencyConventions[conversion];
 
                 var resultAmount = (AmountSigned)VisitExpression(context.expression());
                 var resultAmountConverted = ConvertTo(resultAmount, _targetCurrency);
 
-                return resultAmountConverted.Sign == "-"
+                var val = resultAmountConverted.Sign == "-"
                     ? -resultAmountConverted.Amount.Value
                     : resultAmountConverted.Amount.Value;
+                return new Tuple<decimal, string>(val, resultAmountConverted.Amount.Currency);
             }
 
             private AmountSigned ConvertTo(AmountSigned amountSigned, string convertTo)
@@ -178,12 +195,72 @@ namespace CurrencyComputer.Engine.Antlr
             {
                 public string Currency { get; set; }
                 public decimal Value { get; set; }
+
+                public override string ToString() =>
+                    $"{nameof(Value)}:{Value.ToString(CultureInfo.InvariantCulture)}, {nameof(Currency)}:{Currency}";
+
+                public override bool Equals(object obj)
+                    => Equals(obj as Amount, this);
+
+                private  static bool Equals(Amount left, Amount right)
+                {
+                    if (left is null && right is null) return true;
+
+
+                    if (left?.GetType() != right?.GetType())
+                    {
+                        return false;
+                    }
+
+                    if (left.GetType() != typeof(Amount) || right.GetType() != typeof(Amount))
+                    {
+                        return false;
+                    }
+
+                    return left.ToString().Equals(right.ToString());
+                }
+
+                public static bool operator ==(Amount left, Amount right)
+                    => Equals(left, right);
+
+                public static bool operator !=(Amount left, Amount right)
+                    => !Equals(left, right);
             }
 
             private sealed class AmountSigned
             {
                 public Amount Amount { get; set; }
                 public string Sign { get; set; }
+
+                public override string ToString()
+                    => $"{nameof(Sign)}:{Sign}, {Amount}";
+
+                public override bool Equals(object obj)
+                    => Equals(obj as AmountSigned, this);
+
+                private static bool Equals(AmountSigned left, AmountSigned right)
+                {
+                    if (left is null && right is null) return true;
+
+
+                    if (left?.GetType() != right?.GetType())
+                    {
+                        return false;
+                    }
+
+                    if (left.GetType() != typeof(AmountSigned) || right.GetType() != typeof(AmountSigned))
+                    {
+                        return false;
+                    }
+
+                    return left.ToString().Equals(right.ToString());
+                }
+
+                public static bool operator ==(AmountSigned left, AmountSigned right)
+                    => Equals(left, right);
+
+                public static bool operator !=(AmountSigned left, AmountSigned right)
+                    => !Equals(left, right);
             }
         }
     }

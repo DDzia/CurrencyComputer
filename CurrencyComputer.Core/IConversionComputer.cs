@@ -2,6 +2,6 @@
 {
     public interface IConversionComputer
     {
-        decimal Compute(string input);
+        ComputeResult Compute(string input);
     }
 }
