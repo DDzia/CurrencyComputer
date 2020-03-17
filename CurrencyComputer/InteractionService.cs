@@ -16,16 +16,13 @@ namespace CurrencyComputer
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<InteractionService> _logger;
-        private readonly ILoggerFactory _loggerFactory;
 
         public InteractionService(
             IConfiguration configuration,
-            ILogger<InteractionService> logger,
-            ILoggerFactory loggerFactory)
+            ILogger<InteractionService> logger)
         {
             _configuration = configuration;
             _logger = logger;
-            _loggerFactory = loggerFactory;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -63,7 +60,7 @@ namespace CurrencyComputer
             var conventions = new Dictionary<string, string>();
             _configuration.GetSection("conversionToCurrencyConventions").Bind(conventions);
 
-            return new Computer(costs, conventions, _logger /*_loggerFactory.CreateLogger("ConversionComputer")*/);
+            return new Computer(costs, conventions, _logger);
         }
     }
 }

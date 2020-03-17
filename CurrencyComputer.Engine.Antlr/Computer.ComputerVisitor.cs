@@ -48,6 +48,11 @@ namespace CurrencyComputer.Engine.Antlr
             public override object VisitAmountSignedConvertible(CurrencyComputerParser.AmountSignedConvertibleContext context)
             {
                 var amountSigned = (AmountSigned)VisitAmountSigned(context.amountSigned());
+                // Контроль типов: нельзя конвертировать валюту в саму себя
+                if (amountSigned.Amount.Currency == _targetCurrency)
+                {
+                    throw new SyntaxException($"Can't convert {context.GetText()}, because {amountSigned.Amount.Currency} is destination currency.");
+                }
 
                 var conversionStr = (string) VisitConversion(context.conversion());
                 var convertTo = _conversionToCurrencyConventions[conversionStr];
